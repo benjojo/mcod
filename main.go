@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
