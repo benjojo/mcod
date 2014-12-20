@@ -83,7 +83,6 @@ func KillTimer(force bool) {
 	if GState.UsersConnected == 0 {
 		log.Printf("Shutting down server due to idle...")
 		cmd := exec.Command("killall", "java")
-		go io.Copy(cmd.Stdout, os.Stdout)
 		err := cmd.Start()
 		if err != nil {
 			log.Fatal(err)
@@ -97,7 +96,6 @@ func KillTimer(force bool) {
 func RunStartScript() {
 	log.Printf("Starting Server Script")
 	cmd := exec.Command("./StartServer")
-	go io.Copy(cmd.Stdout, os.Stdout)
 	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
