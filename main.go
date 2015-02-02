@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"log"
 	"net"
@@ -13,6 +14,8 @@ type GlobalState struct {
 	EndServerState string
 	Lock           sync.Mutex
 	UsersConnected int
+	CachedBanner   []byte
+	EnableCache    *bool
 }
 
 var GState GlobalState
@@ -20,6 +23,9 @@ var GState GlobalState
 func main() {
 	GState = GlobalState{}
 	GState.EndServerState = "Offline"
+	GState.EnableCache = flag.Bool("cachebanner", true, "disable this if in the future they change the handshake proto")
+	flag.Parse()
+
 	KillTimer(true)
 	lis, err := net.Listen("tcp", ":25565")
 	LazyHandle(err)
@@ -35,6 +41,63 @@ func main() {
 }
 
 func HandleConnection(con net.Conn) {
+	// Uh quick figure out if it's a banner request or a real thing.
+
+	vhost_chunk := make([]byte, 1024)
+	vhost_len, err := con.Read(vhost_chunk)
+	first_chunk := make([]byte, 1024)
+	first_len, err := con.Read(first_chunk)
+
+	//quick sanity check here
+
+	if *GState.EnableCache && vhost_len != 0 && vhost_chunk[0] == 0x18 {
+		// kk, so the vhost is probs valid
+		if (first_chunk[0] == 0x01 && first_chunk[1] == 0x00) || first_len == 0 {
+			if len(GState.CachedBanner) != 0 && (GState.EndServerState == "Offline" || GState.EndServerState == "Starting") {
+				log.Println("Serving the banner from cache")
+
+				con.Write(GState.CachedBanner)
+				con.Close()
+				return
+			} else if GState.EndServerState == "Online" {
+				// Cache time!
+				log.Println("Pulling a new copy of the banner from the origin and caching for future use")
+
+				Scon, err := net.Dial("tcp", "localhost:25567")
+				if err != nil {
+					con.Close()
+					GState.EndServerState = "Offline"
+					return
+				}
+
+				_, err = Scon.Write(vhost_chunk[0:vhost_len])
+				if err != nil {
+					log.Printf("Error in pulling a cached banner. Error was: %s", err)
+					con.Close()
+					return
+				}
+				_, err = Scon.Write(first_chunk[0:first_len])
+				if err != nil {
+					log.Printf("Error in pulling a cached banner. Error was: %s", err)
+					con.Close()
+					return
+				}
+				banner_chunk := make([]byte, 25565)
+				read, err := Scon.Read(banner_chunk)
+				if err != nil {
+					log.Printf("Error in pulling a cached banner. Error was: %s", err)
+					con.Close()
+					return
+				}
+				GState.CachedBanner = banner_chunk[0:read]
+				con.Write(banner_chunk[0:read])
+				con.Close()
+				Scon.Close()
+				return
+			}
+		}
+	}
+
 	log.Printf("New Player Joining...")
 
 	if GState.EndServerState == "Offline" {
@@ -60,6 +123,20 @@ func HandleConnection(con net.Conn) {
 		GState.EndServerState = "Offline"
 		return
 	}
+
+	_, err = Scon.Write(vhost_chunk[0:vhost_len])
+	if err != nil {
+		log.Printf("Error in pulling connection online to backend, error was: %s", err)
+		con.Close()
+		return
+	}
+	_, err = Scon.Write(first_chunk[0:first_len])
+	if err != nil {
+		log.Printf("Error in pulling connection online to backend, error was: %s", err)
+		con.Close()
+		return
+	}
+
 	GState.UsersConnected++
 	log.Printf("There are now %d people connected", GState.UsersConnected)
 	go io.Copy(Scon, con)
@@ -102,6 +179,7 @@ func RunStartScript() {
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
 	log.Printf("Command finished with error: %v", err)
+	GState.EndServerState = "Online"
 }
 
 func LazyHandle(err error) {
