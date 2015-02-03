@@ -16,6 +16,7 @@ type GlobalState struct {
 	Lock           sync.Mutex
 	UsersConnected int
 	CachedBanner   []byte
+	BackendHost    *string
 	EnableCache    *bool
 }
 
@@ -25,10 +26,12 @@ func main() {
 	GState = GlobalState{}
 	GState.EndServerState = "Offline"
 	GState.EnableCache = flag.Bool("cachebanner", true, "disable this if in the future they change the handshake proto")
+	listenport := flag.String("listen", ":25565", "The port / IP combo you want to listen on")
+	GState.BackendHost = flag.String("backend", "localhost:25567", "The IP address that the MC server listens on when it's online")
 	flag.Parse()
 
 	KillTimer(true)
-	lis, err := net.Listen("tcp", ":25565")
+	lis, err := net.Listen("tcp", *listenport)
 	LazyHandle(err)
 
 	for {
@@ -87,7 +90,7 @@ func HandleConnection(con net.Conn) {
 		GState.Lock.Unlock()
 	}
 
-	Scon, err := net.Dial("tcp", "localhost:25567")
+	Scon, err := net.Dial("tcp", *GState.BackendHost)
 	if err != nil {
 		con.Close()
 		GState.EndServerState = "Offline"
@@ -162,7 +165,9 @@ func HandleCachedBanner(con net.Conn, vhost_chunk []byte, appendping bool) (err 
 		// Cache time!
 		log.Println("Pulling a new copy of the banner from the origin and caching for future use")
 
-		Scon, err := net.Dial("tcp", "localhost:25567")
+		Scon, err := net.Dial("tcp", *GState.BackendHost)
+		LazyHandle(err)
+
 		defer Scon.Close()
 		if err != nil {
 			GState.EndServerState = "Offline"
