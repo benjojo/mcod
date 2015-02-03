@@ -64,8 +64,9 @@ func HandleConnection(con net.Conn) {
 				log.Println("Pulling a new copy of the banner from the origin and caching for future use")
 
 				Scon, err := net.Dial("tcp", "localhost:25567")
+				defer Scon.Close()
+				defer con.Close()
 				if err != nil {
-					con.Close()
 					GState.EndServerState = "Offline"
 					return
 				}
@@ -73,26 +74,21 @@ func HandleConnection(con net.Conn) {
 				_, err = Scon.Write(vhost_chunk[0:vhost_len])
 				if err != nil {
 					log.Printf("Error in pulling a cached banner. Error was: %s", err)
-					con.Close()
 					return
 				}
 				_, err = Scon.Write(first_chunk[0:first_len])
 				if err != nil {
 					log.Printf("Error in pulling a cached banner. Error was: %s", err)
-					con.Close()
 					return
 				}
 				banner_chunk := make([]byte, 25565)
 				read, err := Scon.Read(banner_chunk)
 				if err != nil {
 					log.Printf("Error in pulling a cached banner. Error was: %s", err)
-					con.Close()
 					return
 				}
 				GState.CachedBanner = banner_chunk[0:read]
 				con.Write(banner_chunk[0:read])
-				con.Close()
-				Scon.Close()
 				return
 			}
 		}
