@@ -50,7 +50,9 @@ func HandleConnection(con net.Conn) {
 
 	//quick sanity check here
 
-	if *GState.EnableCache && vhost_len != 0 && vhost_chunk[1] == 0x00 && vhost_chunk[vhost_len-1] == 0x01 {
+	if *GState.EnableCache && vhost_len != 0 && vhost_chunk[1] == 0x00 &&
+		(vhost_chunk[vhost_len-1] == 0x01 || // Check if it's a login packet
+			(vhost_chunk[vhost_len-3] == 0x01 && vhost_chunk[vhost_len-1] == 0x00)) { // same check, just accounting for TCP joining the ping.
 		// kk, so the vhost is probs valid
 		if (first_chunk[0] == 0x01 && first_chunk[1] == 0x00) || first_len == 0 {
 			if len(GState.CachedBanner) != 0 && (GState.EndServerState == "Offline" || GState.EndServerState == "Starting") {
