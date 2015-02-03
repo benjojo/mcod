@@ -50,7 +50,7 @@ func HandleConnection(con net.Conn) {
 
 	//quick sanity check here
 
-	if *GState.EnableCache && vhost_len != 0 && vhost_chunk[0] == 0x18 {
+	if *GState.EnableCache && vhost_len != 0 && vhost_chunk[1] == 0x00 && vhost_chunk[vhost_len-1] == 0x01 {
 		// kk, so the vhost is probs valid
 		if (first_chunk[0] == 0x01 && first_chunk[1] == 0x00) || first_len == 0 {
 			if len(GState.CachedBanner) != 0 && (GState.EndServerState == "Offline" || GState.EndServerState == "Starting") {
