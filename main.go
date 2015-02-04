@@ -125,13 +125,14 @@ func KillTimer(force bool) {
 	}
 	if GState.UsersConnected == 0 {
 		log.Printf("Shutting down server due to idle...")
-		cmd := exec.Command("killall", "java")
+		cmd := exec.Command("./StopServer")
 		err := cmd.Start()
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("Waiting for command to finish...")
 		err = cmd.Wait()
+		log.Printf("Server offline")
 		GState.EndServerState = "Offline"
 	}
 }
@@ -145,7 +146,7 @@ func RunStartScript() {
 	}
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
-	log.Printf("Command finished with error: %v", err)
+	log.Printf("Server online")
 	GState.EndServerState = "Online"
 }
 

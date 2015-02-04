@@ -1,0 +1,2 @@
+#!/bin/bash
+killall java ## ASSUMES THAT YOU ARE RUNNING THIS PROGRAM IN IT'S OWN USER.
