@@ -18,6 +18,7 @@ type GlobalState struct {
 	CachedBanner   []byte
 	BackendHost    *string
 	EnableCache    *bool
+	EnableStrict   *bool
 }
 
 var GState GlobalState
@@ -28,6 +29,7 @@ func main() {
 	GState.EnableCache = flag.Bool("cachebanner", true, "disable this if in the future they change the handshake proto")
 	listenport := flag.String("listen", ":25565", "The port / IP combo you want to listen on")
 	GState.BackendHost = flag.String("backend", "localhost:25567", "The IP address that the MC server listens on when it's online")
+	GState.EnableStrict = flag.Bool("strict", false, "Only allow requests that pass a set of rules to connect")
 	flag.Parse()
 
 	KillTimer(true)
@@ -65,9 +67,13 @@ func HandleConnection(con net.Conn) {
 			if err == nil {
 				return
 			}
-
 		} else {
-			log.Printf("Uncacheable request passing to server...")
+			if *GState.EnableStrict && !((vhost_chunk[vhost_len-3] == 0x02 && vhost_chunk[vhost_len-1] == 0x00) || vhost_chunk[vhost_len-1] == 0x02) {
+				log.Printf("Rejecting invalid looking request. Packet was %x", vhost_chunk[:vhost_len])
+				return
+			} else {
+				log.Printf("Uncacheable request passing to server... Last byte: %x", vhost_chunk[vhost_len-1])
+			}
 		}
 	}
 
