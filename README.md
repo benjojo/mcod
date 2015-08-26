@@ -27,12 +27,10 @@ Right now the “-h” of the program looks like this:
 $ ./mcod -h
 Usage of ./mcod:
   -backend="localhost:25567": The IP address that the MC server listens on when it's online
-  -cachebanner=true: disable this if in the future they change the handshake proto
   -listen=":25565": The port / IP combo you want to listen on
-  -strict=false: Only allow requests that pass a set of rules to connect
 ```
 
-By default it will cache the banners, However. It’s worth noting that if you want to use this for other games, you will want to disable that and also alter the StartServer and StopServer scripts.
+Please note that mcod will only work on Minecraft servers that are running version 1.7 or higher, because of the way how the current network protocols are set up. It's possible that this protocol gets changed in newer Minecraft versions. If that happens, the code has to be updated to reflect the changes. It’s also worth noting that if you want to use this for other games, you have to change the code where the Minecraft protocols are used and also alter the StartServer and StopServer scripts.
 
 In addition, this software currently assumes that it will be ran on its own user. Don’t run this program on the same user as other java apps. Since by default the StopServer script kills al java applications running.
 
